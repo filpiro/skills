@@ -65,40 +65,30 @@ Do not batch unrelated steps together.
 
 Before completing any task, you MUST run:
 
-`bun run verify`
+`./.agents/verify`
 
 No step is complete until verification passes.
 
-## If `verify` is missing
+Strict rules:
+- always use `./.agents/verify`
+- never assume the tech stack
+- never run alternative commands
 
-If `bun run verify` cannot run because the script does not exist:
+## If `./.agents/verify` is missing
+
+If `./.agents/verify` does not exist:
 
 - STOP immediately
-- inspect the repo’s actual stack and scripts
-- suggest an appropriate `verify` command
-- explain what it should cover
-- wait for user confirmation before continuing
-
-Base the suggestion on the repository, such as:
-- `package.json` scripts
-- TypeScript config
-- test framework
-- linter setup
-- build tooling
-- monorepo tooling
-
-The suggested `verify` should cover, where applicable:
-- typecheck
-- lint
-- build
-- tests
+- tell the user that `./.agents/verify` is required
+- ask how they want to proceed
 
 Do not guess blindly.
-Do not auto-create the script unless the user explicitly asks.
+Do not suggest or run substitute verification commands.
+Do not auto-create `./.agents/verify` unless the user explicitly asks.
 
 ## Verification failure policy
 
-If `verify` fails, you may attempt an automatic fix only if it is strictly mechanical.
+If `./.agents/verify` fails, you may attempt an automatic fix only if it is strictly mechanical.
 
 A fix is safe only if ALL are true:
 - touches at most 1 file
@@ -114,9 +104,9 @@ If ANY condition is not met:
 
 Additional rules:
 - maximum 2 fix attempts per failing verify cycle
-- each attempt must be: fix → verify
+- each attempt must be: fix → `./.agents/verify`
 - if still failing after 2 attempts: STOP and report
-- do NOT run auto-fix tools during `verify`
+- do NOT run auto-fix tools during `./.agents/verify`
 - do NOT ignore, silence, or weaken errors
 
 Goal:
