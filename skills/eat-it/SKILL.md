@@ -1,198 +1,157 @@
 ---
 name: eat-it
-description: Implement an approved plan from plate-it or a sufficiently clear grill-me transcript, one verified step at a time.
+description: Execute a `spec.md` or sufficiently clear grill-me result in small verified commits, while keeping an explicit progress log.
 ---
 
 # Eat It
 
 You are an implementation agent.
 
-Your job is to take either:
-1. a `plate-it` implementation brief, or
-2. a sufficiently clear `grill-me` transcript,
+Your job is to execute an approved feature plan **step by step**, verify each completed step, and leave behind a clean progress trail.
 
-and turn it into completed code changes.
-
-You are not brainstorming.
-You are not redesigning.
-You are executing an approved plan in small, reversible checkpoints.
-
-## Inputs
-
+## Accepted inputs
 ### Preferred
-A `plate-it` document. Treat it as the source of truth for:
-- frozen decisions
+`spec.md` produced by `plate-it`
+
+Treat it as the source of truth for:
+- goal
+- scope
+- locked decisions
 - constraints
-- codebase map
-- implementation steps
+- repo map
+- execution plan
 - allowed autonomy
-- known unknowns
-- validation
-- definition of done
+- open questions
+- verification
+- done criteria
 
 ### Fallback
-A `grill-me` transcript.
+A sufficiently clear `grill-me` result.
 
-If no `plate-it` file is provided:
-- extract confirmed decisions
-- extract constraints
-- derive a minimal ordered implementation plan
-- separate confirmed decisions, assumptions, and unknowns
+If no `spec.md` exists:
+- extract only confirmed decisions
+- derive a minimal ordered plan
+- separate facts from assumptions
+- proceed only if safe
 
-Proceed only if the path is clear enough to implement safely.
+If the task is ambiguous, stop and ask for `plate-it`.
 
-If the input is too ambiguous:
-- STOP
-- summarize the blockers
-- ask for a `plate-it` brief or clarification
+## Files to maintain
+In the same feature directory as the input spec/prompt, maintain:
+- `progress.md` → required
 
-Do not invent unapproved product or architecture decisions.
+If `progress.md` does not exist, create it.
+
+## `progress.md` contract
+Use this structure:
+
+# Progress
+Feature: <feature-name>
+Started: YYYY-MM-DD HH:MM
+Status: in_progress | blocked | done
+
+## Steps
+- [ ] Step 1 — title
+- [ ] Step 2 — title
+- [ ] Step 3 — title
+
+## Log
+### Step N — title
+- plan:
+- files:
+- verification:
+- commit:
+- status: done | blocked
+- notes:
+
+Append one log block per executed step.
 
 ## Execution model
-
-Work sequentially, one step at a time.
+Work sequentially.
 
 For each step:
-1. identify the target files/modules
+1. identify the target files
 2. make the smallest change that completes the step
 3. run verification
-4. if verification passes, checkpoint the step
-5. move to the next step
+4. if verification passes, update `progress.md`
+5. create a checkpoint commit
+6. continue
 
-Do not batch unrelated steps together.
+Do not batch unrelated steps.
+Do not silently reorder unless dependencies force it.
+If reordering is required, note it in `progress.md`.
 
 ## Mandatory verification
+Verification must follow this order:
 
-Before completing any task, you MUST run:
+1. If `spec.md` names a mandatory verification command, use it.
+2. Otherwise, if `./.agents/verify` exists, use it.
+3. Otherwise use the narrowest repo-native verification needed for the changed scope.
 
-`./.agents/verify`
+Examples of acceptable repo-native checks only when step 1 and 2 do not apply:
+- project test script
+- lint for changed package
+- typecheck for changed package
+- focused build/test command
 
-No step is complete until verification passes.
-
-Strict rules:
-- always use `./.agents/verify`
-- never assume the tech stack
-- never run alternative commands
-
-## If `./.agents/verify` is missing
-
-If `./.agents/verify` does not exist:
-
-- STOP immediately
-- tell the user that `./.agents/verify` is required
-- ask how they want to proceed
-
-Do not guess blindly.
-Do not suggest or run substitute verification commands.
-Do not auto-create `./.agents/verify` unless the user explicitly asks.
+Never skip verification for a completed step.
 
 ## Verification failure policy
+If verification fails:
+- you may attempt an automatic fix only if it is mechanical
+- maximum 2 fix attempts per step
+- every attempt must be followed by verification
 
-If `./.agents/verify` fails, you may attempt an automatic fix only if it is strictly mechanical.
+A mechanical fix must satisfy all of these:
+- narrow scope
+- no product decision change
+- no new abstraction
+- no behavioral redesign
 
-A fix is safe only if ALL are true:
-- touches at most 1 file
-- changes no more than 5 lines
-- does not change logic or behavior
-- is limited to formatting, lint, import cleanup, or type-only corrections with no runtime effect
+If the fix exceeds that boundary:
+- stop
+- mark the step blocked in `progress.md`
+- explain the minimal blocker
+- do not commit partial work as a completed checkpoint
 
-If ANY condition is not met:
-- classify it as a refactor
-- STOP
-- explain why
-- ask for confirmation before proceeding
+## Commit policy
+After each verified step, create one checkpoint commit.
 
-Additional rules:
-- maximum 2 fix attempts per failing verify cycle
-- each attempt must be: fix → `./.agents/verify`
-- if still failing after 2 attempts: STOP and report
-- do NOT run auto-fix tools during `./.agents/verify`
-- do NOT ignore, silence, or weaken errors
-
-Goal:
-Ensure code passes typecheck, lint, build, and tests without unintended changes.
-
-## Checkpoints
-
-After each completed and verified step, create a checkpoint commit.
-
-Only checkpoint steps that are:
-- complete
-- verified
-- logically coherent
-
-Do not checkpoint failed, partial, or speculative work.
-
-## Step derivation
-
-If the input is `plate-it`:
-- use its implementation plan
-- preserve its order unless a dependency forces reordering
-- if you must reorder, say so explicitly
-
-If the input is `grill-me`:
-- derive a minimal executable plan
-- keep steps concrete, small, and code-oriented
-- avoid speculative work
-
-Each step should be independently understandable where possible.
+Commit rules:
+- one commit per completed step
+- message should match or closely follow the commit message in `spec.md`
+- do not mix multiple steps in one commit
+- do not commit blocked or speculative work as complete
 
 ## Autonomy boundaries
+You may decide without asking when the choice is:
+- local
+- reversible
+- obviously implied by the spec
+- consistent with repo conventions
 
-You may act autonomously when:
-- naming is minor and local
-- file placement is obvious
-- implementation details are implied by approved decisions
-- the change follows existing repo conventions
+You must stop if execution requires:
+- a new product behavior
+- a new architectural decision
+- a refactor beyond the current step
+- resolving an open question marked as not safely assumable
 
-You must STOP and ask before proceeding when:
-- a new architectural decision is needed
-- multiple valid product behaviors exist and none is approved
-- verification requires a non-mechanical fix
-- the next change would be a refactor
-- the codebase materially contradicts the plan
-
-## Refactor rule
-
-Treat a change as a refactor if ANY are true:
-- more than 1 file must be changed to fix verification
-- more than 5 lines must change
-- logic or runtime behavior would change
-- a dependency or interface must be redesigned
-- a new abstraction is needed
-- code must be reorganized beyond the current step’s narrow scope
-
-When this happens:
-- STOP
-- describe the minimal refactor required
-- ask for confirmation
+## Completion
+When all steps are done:
+- mark `progress.md` as `done`
+- confirm verification status
+- ensure the `Done` checklist in `spec.md` is satisfied
 
 ## Working style
-
 Prefer:
 - small diffs
 - repo-native patterns
-- incremental progress
-- verified checkpoints
+- explicit progress
+- verified commits
 
 Avoid:
 - opportunistic cleanup
-- unrelated edits
 - broad refactors
 - style churn
-- introducing new tools or conventions unless required
-
-## End-of-run reporting
-
-At the end, report:
-- completed steps
-- checkpointed steps
-- any safe fixes applied
-- blockers, if any
-- final verification status
-
-If stopped early, report:
-- exact stopping reason
-- last successful checkpoint
-- next pending step
-- whether confirmation is required
+- hidden assumptions
+- giant commits

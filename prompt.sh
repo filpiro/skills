@@ -1,20 +1,26 @@
 #!/usr/bin/env bash
-# prompt — creates a WWW prompt template inside specs/<feature-name>/
+
+# prompt — creates a WWHW feature folder and prompt template
 # Usage: prompt <feature-name>
-#
-# OPTION A — tmux split + lazyvim (comment/uncomment to activate)
-# OPTION B — $EDITOR fallback (active by default)
 
-set -e
+set -euo pipefail
 
-if [[ -z "$1" ]]; then
+if [[ -z "${1:-}" ]]; then
   echo "Usage: prompt <feature-name>"
   exit 1
 fi
 
-FEATURE=$(echo "$1" | tr '[:upper:]' '[:lower:]' | tr ' ' '-' | tr -cd '[:alnum:]-')
-DATE=$(date +%Y%m%d)
-BASE_DIR="./specs/${FEATURE}"
+slugify() {
+  echo "$1" \
+    | tr '[:upper:]' '[:lower:]' \
+    | tr ' ' '-' \
+    | tr -cd '[:alnum:]-'
+}
+
+FEATURE="$(slugify "$1")"
+DATE="$(date +%Y%m%d)"
+TS="$(date '+%Y-%m-%d %H:%M')"
+BASE_DIR="./.agents/specs/${FEATURE}"
 
 if [[ -d "$BASE_DIR" ]]; then
   VERSION=2
@@ -26,66 +32,70 @@ if [[ -d "$BASE_DIR" ]]; then
 fi
 
 mkdir -p "$BASE_DIR"
-FILEPATH="${BASE_DIR}/prompt-${FEATURE}-${DATE}.md"
 
-cat > "$FILEPATH" << 'TEMPLATE'
+PROMPT_PATH="${BASE_DIR}/prompt.md"
+SPEC_PATH="${BASE_DIR}/spec.md"
+PROGRESS_PATH="${BASE_DIR}/progress.md"
+NOTES_PATH="${BASE_DIR}/notes.md"
+
+cat > "$PROMPT_PATH" <<'TEMPLATE'
 # FEATURE_NAME
 Date: DATE_VALUE
+Status: Draft
 
 ## Why
-# Concrete problem that generated this request.
-# What is broken or missing today? What is the impact on the user?
-#
-# ❌ DON'T write: "Create the order list"
-# ✅ Write: "User has no way to see past orders after checkout.
-#           They return to home without purchase confirmation."
+# Concrete problem.
+# What is broken or missing today?
+# Why does it matter?
+# What user or business impact exists now?
 
 ## What
-# Expected behavior — happy path and error path.
-# What the system must do, NOT how to implement it.
-#
-# ❌ DON'T write: "Use OrderProvider with two-column flex"
-# ✅ Write: "Show order list with number, date, total.
-#           Click opens detail. Order not found: 404."
-#
-# Architectural constraints (only if explicit and non-negotiable):
-# ❌ DON'T write: "Use flex two columns" — that's layout, not a constraint
-# ✅ Write: "OrderProvider wraps only /ordini/$orderId, not the parent layout"
-#           "No tables. No sidebar."
+# Expected behavior only.
+# Happy path, relevant failure path, visible outcome.
+# No implementation instructions.
+# Put only explicit non-negotiable constraints here.
 
 ## How
-# Existing resources the agent can use — it decides how and where.
-# List what exists and where to find it. Do not dictate usage.
-#
-# API:
-# Ex: getOrder(orderId) — src/api/orders/
-#
-# Components:
-# Ex: OrderSummaryPanel → src/routes/pagamento/riepilogo/$orderId.tsx
-#     BillingAddressPanel → src/pages/shop/CheckoutShippingPage.tsx
-#     CartVendorGroup → src/components/shop/CartVendorGroup.tsx
-#
-# Logic and patterns:
-# Ex: OrderProvider → src/routes/pagamento/riepilogo/$orderId.tsx
-#     auth pattern → src/routes/_authed/
-#
-# Layout (only if binding):
-# Ex: "Vertical panels with Separator. No tables."
+# Existing resources the agent may use.
+# APIs, components, routes, modules, patterns, constraints.
+# Describe what exists and where.
+# Do not prescribe exact implementation unless already decided.
 
 ## Where
-# Entry point + relevant files. No need to be exhaustive.
-#
-# entrypoint: src/...
-# reference: src/...
+# Entry points and relevant files.
+# Keep this focused, not exhaustive.
 TEMPLATE
 
-sed -i "s/FEATURE_NAME/${FEATURE}/" "$FILEPATH"
-sed -i "s/DATE_VALUE/${DATE}/" "$FILEPATH"
+cat > "$SPEC_PATH" <<'TEMPLATE'
+# FEATURE_NAME
+Date: DATE_VALUE
+Status: Pending plate-it
+Source: prompt / grill-me
 
-echo "Created: $FILEPATH"
+<!-- Filled by plate-it -->
+TEMPLATE
 
-# --- OPTION A: tmux split right + lazyvim ---
-# tmux split-window -h -l 50% "nvim '$FILEPATH'"
+cat > "$PROGRESS_PATH" <<'TEMPLATE'
+# Progress
+Feature: FEATURE_NAME
+Started: DATE_TIME_VALUE
+Status: pending
 
-# --- OPTION B: default editor (active) ---
-${EDITOR:-vi} "$FILEPATH"
+## Steps
+
+## Log
+TEMPLATE
+
+: > "$NOTES_PATH"
+
+sed -i "s/FEATURE_NAME/${FEATURE}/g" "$PROMPT_PATH" "$SPEC_PATH" "$PROGRESS_PATH"
+sed -i "s/DATE_VALUE/${DATE}/g" "$PROMPT_PATH" "$SPEC_PATH"
+sed -i "s/DATE_TIME_VALUE/${TS}/g" "$PROGRESS_PATH"
+
+echo "Created feature workspace: $BASE_DIR"
+echo "- $PROMPT_PATH"
+echo "- $SPEC_PATH"
+echo "- $PROGRESS_PATH"
+echo "- $NOTES_PATH"
+
+${EDITOR:-vi} "$PROMPT_PATH"
