@@ -1,157 +1,207 @@
 ---
 name: eat-it
-description: Execute a `spec.md` or sufficiently clear grill-me result in small verified commits, while keeping an explicit progress log.
+description: Execute an approved spec.md step by step. Use this skill when a feature has already been planned and the agent must implement it exactly as specified, update progress.md during execution, verify every step before committing, and run final verification at the end.
 ---
 
-# Eat It
+# eat-it
 
-You are an implementation agent.
+Execute an existing `spec.md` exactly as written.
 
-Your job is to execute an approved feature plan **step by step**, verify each completed step, and leave behind a clean progress trail.
+`eat-it` is the implementation skill for a spec-driven workflow. It does not plan, redesign, reinterpret, or expand the feature. It implements the approved spec step by step, verifies every step before commit, commits each completed step, and keeps `progress.md` updated during execution.
 
-## Accepted inputs
-### Preferred
-`spec.md` produced by `plate-it`
+---
 
-Treat it as the source of truth for:
-- goal
-- scope
-- locked decisions
-- constraints
-- repo map
-- execution plan
-- allowed autonomy
-- open questions
-- verification
-- done criteria
+## Source of truth
 
-### Fallback
-A sufficiently clear `grill-me` result.
+`spec.md` is the only source of truth for scope and implementation steps.
 
-If no `spec.md` exists:
-- extract only confirmed decisions
-- derive a minimal ordered plan
-- separate facts from assumptions
-- proceed only if safe
+Before doing anything, you MUST:
 
-If the task is ambiguous, stop and ask for `plate-it`.
+1. Locate `spec.md`.
+2. Read `spec.md` fully.
+3. Extract the ordered implementation steps.
+4. Use only those steps for execution.
 
-## Files to maintain
-In the same feature directory as the input spec/prompt, maintain:
-- `progress.md` → required
+If `spec.md` is missing, incomplete, contradictory, or does not contain actionable implementation steps, STOP and report the blocker.
 
-If `progress.md` does not exist, create it.
+Do not rely on chat history, memory, assumptions, or external interpretation when they conflict with `spec.md`.
 
-## `progress.md` contract
-Use this structure:
+---
 
-# Progress
-Feature: <feature-name>
-Started: YYYY-MM-DD HH:MM
-Status: in_progress | blocked | done
+## Required files
 
-## Steps
-- [ ] Step 1 — title
-- [ ] Step 2 — title
-- [ ] Step 3 — title
+Work inside the feature workspace, usually:
 
-## Log
-### Step N — title
-- plan:
-- files:
-- verification:
-- commit:
-- status: done | blocked
-- notes:
+```text
+.agents/specs/<feature>/
+```
 
-Append one log block per executed step.
+Expected files:
 
-## Execution model
-Work sequentially.
+```text
+prompt.md      Original WWHW prompt, for reference only
+spec.md        Approved execution contract
+progress.md    Execution journal, updated step by step
+```
+
+`prompt.md` is informational only.  
+`spec.md` governs scope and ordered steps.  
+`progress.md` records actual execution state.
+
+---
+
+## Execution loop
+
+For each step from `spec.md`, in order:
+
+1. Update `progress.md` and mark the step as `in_progress`.
+2. Implement only the smallest change needed for that step.
+3. Run step verification.
+4. Fix only issues directly related to the current step.
+5. Re-run step verification until it passes or a blocker is found.
+6. Commit the completed step.
+7. Update `progress.md` immediately with:
+   - step status: `completed`
+   - step verification command/result
+   - commit hash or commit message
+   - relevant notes or blocker, if any
+
+Do not start the next step until `progress.md` has been updated for the completed step.
+
+If `progress.md` cannot be updated, STOP.
+
+---
+
+## Step verification
+
+Step verification is mandatory before every commit.
 
 For each step:
-1. identify the target files
-2. make the smallest change that completes the step
-3. run verification
-4. if verification passes, update `progress.md`
-5. create a checkpoint commit
-6. continue
 
-Do not batch unrelated steps.
-Do not silently reorder unless dependencies force it.
-If reordering is required, note it in `progress.md`.
+1. If `./.agents/verify` exists, use it.
+2. Otherwise, use the narrowest repo-native verification needed for the changed scope.
 
-## Mandatory verification
-Verification must follow this order:
+Acceptable repo-native checks, only when `./.agents/verify` does not exist:
 
-1. If `spec.md` names a mandatory verification command, use it.
-2. Otherwise, if `./.agents/verify` exists, use it.
-3. Otherwise use the narrowest repo-native verification needed for the changed scope.
-
-Examples of acceptable repo-native checks only when step 1 and 2 do not apply:
-- project test script
-- lint for changed package
-- typecheck for changed package
+- focused test script for the affected area
+- lint for the changed package
+- typecheck for the changed package
 - focused build/test command
 
-Never skip verification for a completed step.
+Never commit a step without passing step verification.
 
-## Verification failure policy
-If verification fails:
-- you may attempt an automatic fix only if it is mechanical
-- maximum 2 fix attempts per step
-- every attempt must be followed by verification
+If verification fails, fix only what is required for the current step and re-run verification.
 
-A mechanical fix must satisfy all of these:
-- narrow scope
-- no product decision change
-- no new abstraction
-- no behavioral redesign
+If no valid step verification can be identified, STOP and report the blocker.
 
-If the fix exceeds that boundary:
-- stop
-- mark the step blocked in `progress.md`
-- explain the minimal blocker
-- do not commit partial work as a completed checkpoint
+---
+
+## Final verification
+
+Final verification validates the whole implementation after all steps are completed.
+
+When all steps are completed:
+
+1. If `spec.md` defines a mandatory final verification command, run it.
+2. Otherwise, run the broadest reasonable repo-native verification available.
+3. Update `progress.md` with the final verification command/result.
+
+Do not use the `spec.md` final verification command as the per-step verification gate unless `spec.md` explicitly says so.
+
+If final verification fails, fix only issues caused by the completed implementation, re-run final verification, and update `progress.md`.
+
+---
 
 ## Commit policy
-After each verified step, create one checkpoint commit.
 
-Commit rules:
-- one commit per completed step
-- message should match or closely follow the commit message in `spec.md`
-- do not mix multiple steps in one commit
-- do not commit blocked or speculative work as complete
+Commit after every completed step.
 
-## Autonomy boundaries
-You may decide without asking when the choice is:
-- local
-- reversible
-- obviously implied by the spec
-- consistent with repo conventions
+Each commit must represent one logical step from `spec.md`.
 
-You must stop if execution requires:
-- a new product behavior
-- a new architectural decision
-- a refactor beyond the current step
-- resolving an open question marked as not safely assumable
+Commit message format:
 
-## Completion
-When all steps are done:
-- mark `progress.md` as `done`
-- confirm verification status
-- ensure the `Done` checklist in `spec.md` is satisfied
+```text
+<type>: <short step summary>
+```
 
-## Working style
-Prefer:
-- small diffs
-- repo-native patterns
-- explicit progress
-- verified commits
+Examples:
 
-Avoid:
-- opportunistic cleanup
-- broad refactors
-- style churn
-- hidden assumptions
-- giant commits
+```text
+feat: add product filter schema
+fix: handle empty search state
+refactor: isolate editor block parser
+test: cover checkout validation rules
+```
+
+Do not batch multiple unrelated steps into one commit.
+
+If committing is impossible, STOP and report the blocker.
+
+---
+
+## Autonomy limits
+
+You MAY:
+- inspect files needed for the current step
+- make minimal local fixes required for step verification
+- update `progress.md`
+- create or modify tests required by the step
+
+You MUST NOT:
+- redesign the solution
+- add unrequested features
+- reorder steps
+- skip verification
+- skip commits
+- silently change scope
+- use `notes.md` or chat context as source of truth
+
+If the spec is wrong or impossible to implement safely, STOP and explain the blocker.
+
+---
+
+## Progress format
+
+Keep `progress.md` concise and append-friendly.
+
+Recommended format:
+
+```markdown
+# Progress
+
+## Current status
+- Active step:
+- Last completed step:
+- Last step verification:
+- Last commit:
+- Final verification:
+
+## Steps
+
+### Step 1 — <title>
+Status: pending | in_progress | completed | blocked
+Step verification:
+Commit:
+Notes:
+
+### Step 2 — <title>
+Status: pending | in_progress | completed | blocked
+Step verification:
+Commit:
+Notes:
+```
+
+Update the relevant step before and after each implementation cycle.
+
+---
+
+## Completion report
+
+After final verification passes, report only:
+
+- completed steps
+- final verification result
+- commits created
+- remaining known issues, if any
+
+Do not provide a long narrative unless requested.
