@@ -1,27 +1,93 @@
 ---
 name: grill-me
-description: Interview the user relentlessly about a plan or design until reaching shared understanding, resolving each branch of the decision tree. Use when user wants to stress-test a plan, get grilled on their design, or mentions "grill me".
+description: Use when the user wants to explore, stress-test, or define a plan before implementing. Triggers on "brainstorm", "grill me", "help me think through", "let's plan", or any request to clarify a feature/system before building. Explores the codebase, interviews the user with structured questions, then produces a session-based implementation plan ready for inline review.
 ---
 
-Interview me relentlessly about every aspect of this plan until we reach a shared understanding. Walk down each branch of the design tree, resolving dependencies between decisions one-by-one. For each question, provide your recommended answer.
+## Phase 1 — Explore
 
-Ask the questions one at a time.
+Before asking anything, explore the codebase in this order:
 
-If a question can be answered by exploring the codebase, explore the codebase instead.
+1. `ccc search <topic>` — semantic orientation, find relevant files and concepts
+2. `ccc describe <path>` — summarize key files identified in step 1
+3. If structural patterns need verification (impact analysis, existing conventions, anti-patterns): `ast-grep scan` on identified paths
 
-Use multiple-choice only when the decision space is well-defined.
-If it is not, first ask a narrowing question to clarify the space before proposing options.
+Use findings to skip questions the code already answers.
 
-Format each question as:
+## Phase 2 — Q&A
 
-**Q[n]** | [topic]
-[Brief context if needed]
+Interview the user on every aspect not resolved by Phase 1. Walk the decision tree, resolving dependencies one by one. One question per turn (any answer format is valid).
 
-→ A) [option]
-→ B) [option]
-→ C) [option, if needed]
-→ O) Other: propose a different answer
-→ U) Unknown: missing information, cannot decide yet
-→ Recommended: [letter]
+Every question uses exactly one of these formats:
 
-Reply with a letter or free text.
+**Multiple options:**
+```
+[Qn] <question>
+→ A) option  B) option  C) option
+★ Recommend: X — <one-line reason>
+```
+
+**Binary:**
+```
+[Qn] <question>
+→ Yes / No
+★ Recommend: Yes — <one-line reason>
+```
+
+**Open:**
+```
+[Qn] <question>
+★ Recommend: <concise answer>
+```
+
+Only ask if the answer materially changes the plan. Stop when the decision tree is fully resolved.
+
+## Phase 3 — Plan
+
+Produce the plan in chat. Include only the recommended approach.
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+PLAN: <title>
+
+Context: <2-3 lines summarizing key findings from Phase 1>
+Constraints: <bullet list — only if present>
+Risks: <bullet list — only if emerged from Q&A>
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Session 1 — <title>
+Goal: <one line, only if not obvious from title>
+  • <task>
+  • <task>
+Files: path/to/file.ts, path/to/other.ts
+
+Session 2 — <title>
+Goal: <one line, only if not obvious from title>
+  • <task>
+  • <task>
+Files: path/to/file.ts
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Confirmed? Edit inline or type `stamp` for XML.
+```
+
+`Constraints` and `Risks` are optional — omit if empty. Re-render the full plan after any inline edit.
+
+## Stamp (optional)
+
+Only if the user types `stamp`:
+
+```xml
+<plan title="...">
+  <context>...</context>
+  <constraints>
+    <item>...</item>
+  </constraints>
+  <risks>
+    <item>...</item>
+  </risks>
+  <session id="1" title="..." goal="...">
+    <task>...</task>
+    <files>
+      <file>path/to/file.ts</file>
+    </files>
+  </session>
+</plan>
+```
