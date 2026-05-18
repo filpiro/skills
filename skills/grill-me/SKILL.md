@@ -9,7 +9,7 @@ Before asking anything, explore the codebase in this order:
 
 1. `ccc search <topic>` — semantic orientation, find relevant files and concepts
 2. `ccc describe <path>` — summarize key files identified in step 1
-3. If structural patterns need verification (impact analysis, existing conventions, anti-patterns): `ast-grep scan` on identified paths
+3. If structural patterns need verification (impact analysis, existing conventions, anti-patterns): `ast-grep --lang [language] -p '<pattern>'`. Avoid using text-only search tools unless a plain-text search is explicitly requested.
 
 Use findings to skip questions the code already answers.
 
