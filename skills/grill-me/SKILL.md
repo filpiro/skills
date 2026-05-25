@@ -9,13 +9,14 @@ Before asking anything, explore the codebase in this order:
 
 1. `ccc search <topic>` — semantic orientation, find relevant files and concepts
 2. `ccc describe <path>` — summarize key files identified in step 1
-3. If structural patterns need verification (impact analysis, existing conventions, anti-patterns): `ast-grep --lang [language] -p '<pattern>'`. Avoid using text-only search tools unless a plain-text search is explicitly requested.
-
-Use findings to skip questions the code already answers.
 
 ## Phase 2 — Q&A
 
-Interview the user on every aspect not resolved by Phase 1. Walk the decision tree, resolving dependencies one by one. One question per turn (any answer format is valid).
+Interview me relentlessly about every aspect of this plan until we reach a shared understanding. Walk down each branch of the design tree, resolving dependencies between decisions one-by-one. For each question, provide your recommended answer.
+
+Ask the questions one at a time, waiting for feedback on each question before continuing.
+
+If a question can be answered by exploring the codebase, explore the codebase instead.
 
 Every question uses exactly one of these formats:
 
