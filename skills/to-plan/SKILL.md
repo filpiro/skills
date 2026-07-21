@@ -1,11 +1,11 @@
 ---
 name: to-plan
-description: Turn a resolved discussion, grilled specification, or chat history into an implementation plan that another agent can execute.
+description: Turn a resolved discussion, grilled specification, or chat history into a self-contained implementation plan that another agent can execute.
 ---
 
 # To Plan
 
-Your goal is to transform the current discussion into an implementation plan.
+Your goal is to transform the current discussion into a self-contained implementation plan.
 
 Assume the discussion already contains the necessary context and decisions.
 
